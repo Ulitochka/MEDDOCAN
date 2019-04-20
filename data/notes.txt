@@ -1,0 +1,54 @@
+dev
+                               label       #
+ID ЛИЧНАЯ ЗАНЯТОСТЬ ЗДРАВООХРАНЕНИЯ      ID_EMPLEO_PERSONAL_SANITARIO       5
+                          ПРОФЕССИЯ                         PROFESION       9
+                     ЦЕНТР ЗДОРОВЬЯ                      CENTRO_SALUD      11
+                        НОМЕР ФАКСА                        NUMERO_FAX      16
+           ДРУГАЯ ПРЕДМЕТНАЯ ПОМОЩЬ           OTROS_SUJETO_ASISTENCIA      16
+               ID КОНТАКТНАЯ ПОМОЩЬ           ID_CONTACTO_ASISTENCIAL      32
+                     НОМЕР ТЕЛЕФОНА                   NUMERO_TELEFONO      78
+ЧЛЕНЫ СЕМЬИ ПОДТВЕРЖДАЮТСЯ В ПОМОЩЬ      FAMILIARES_SUJETO_ASISTENCIA     128
+                       Institución                        INSTITUCION     254
+              ID ПРЕДМЕТНАЯ ПОМОЩЬ               ID_SUJETO_ASISTENCIA     324
+                            СТРАНА                               PAIS     351
+          ПОЛНАЯ ПРЕДМЕТНАЯ ПОМОЩЬ             SEXO_SUJETO_ASISTENCIA     456
+                          БОЛЬНИЦА                           HOSPITAL     583
+                    ID СТРАХОВАНИЕ                   ID_ASEGURAMIENTO     584
+                ID ЛИЧНОЕ ЗДОРОВЬЕ   ID_TITULACION_PERSONAL_SANITARIO     664
+    НАИМЕНОВАНИЕ ПРЕДМЕТНОЙ ПОМОЩИ           NOMBRE_SUJETO_ASISTENCIA     782
+      ВОЗРАСТНАЯ ПРЕДМЕТНАЯ ПОМОЩЬ             EDAD_SUJETO_ASISTENCIA    1030
+                       ТЕРРИТОРИЯ                          TERRITORIO    1196
+                             MAIL                  CORREO_ELECTRONICO    1342
+             ИМЯ ЛИЧНОГО ЗДОРОВЬЯ           NOMBRE_PERSONAL_SANITARIO    1608
+                             УЛИЦА                              CALLE    2994
+                              ДАТЫ                             FECHAS    3143
+                                                                    O    119449
+
+train
+                           label       #
+                    CENTRO_SALUD      29
+         OTROS_SUJETO_ASISTENCIA      33
+                      NUMERO_FAX      45
+                       PROFESION      52
+         ID_CONTACTO_ASISTENCIAL      77
+                 NUMERO_TELEFONO     136
+                     INSTITUCION     319
+    FAMILIARES_SUJETO_ASISTENCIA     375
+            ID_SUJETO_ASISTENCIA     620
+                            PAIS     735
+          SEXO_SUJETO_ASISTENCIA     927
+                        HOSPITAL    1105
+                ID_ASEGURAMIENTO    1160
+ID_TITULACION_PERSONAL_SANITARIO    1397
+        NOMBRE_SUJETO_ASISTENCIA    1561
+          EDAD_SUJETO_ASISTENCIA    2068
+                      TERRITORIO    2150
+              CORREO_ELECTRONICO    2652
+       NOMBRE_PERSONAL_SANITARIO    3374
+                          FECHAS    5543
+                           CALLE    5971
+                               O  225723
+
+
+
+

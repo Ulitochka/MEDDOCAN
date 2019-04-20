@@ -1,0 +1,69 @@
+A Coruña
+Álava
+Albacete
+Alicante
+Almería
+Andalucía
+Aragón
+Asturias
+Ávila
+Badajoz
+Baleares
+Baleares
+Barcelona
+Burgos
+Cáceres
+Cádiz
+Canarias
+Cantabria
+Cantabria
+Castellón
+Castilla-La Mancha
+Castilla y León
+Cataluña
+Ceuta
+Ciudad Real
+Comunidad de Madrid
+Comunidad Foral de Navarra
+Comunidad Valenciana
+Córdoba
+Cuenca
+Extremadura
+Galicia
+Gipuzkoa
+Girona
+Granada
+Guadalajara
+Huelva
+Huesca
+Jaén
+La Rioja
+La Rioja
+Las Palmas
+León
+Lérida
+Lugo
+Madrid
+Málaga
+Melilla
+Murcia
+Navarra
+Ourense
+País Vasco
+Palencia
+Pontevedra
+Principado de Asturias
+Región de Murcia
+Salamanca
+Santa Cruz de Tenerife
+Segovia
+Sevilla
+Soria
+Tarragona
+Teruel
+Toledo
+Valencia
+Valladolid
+Vizcaya
+Zamora
+Zaragoza

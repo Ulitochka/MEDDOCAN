@@ -104,20 +104,25 @@ x_train = pad_sequences(x_train, maxlen=max_s_len, value=0, padding='pre', trunc
 y_train = pad_sequences(y_train, maxlen=max_s_len, value=0, padding='pre', truncating='pre')
 y_train = to_categorical(y_train, len(labels2ind)+1)
 
+x_train_chars = [[[chars2i.get(ch) for ch in t] for t in s] for s in train["x"]]
+x_train_chars = [pad_sequences(s, maxlen=max_w_len, value=0, padding='pre', truncating='pre') for s in x_train_chars]
+x_train_chars = pad_sequences(x_train_chars, maxlen=max_s_len, value=0, padding='pre', truncating='pre')
+
+x_test_chars = [[[chars2i.get(ch) for ch in t] for t in s] for s in dev["x"]]
+x_test_chars = [pad_sequences(s, maxlen=max_w_len, value=0, padding='pre', truncating='pre') for s in x_test_chars]
+x_test_chars = pad_sequences(x_test_chars, maxlen=max_s_len, value=0, padding='pre', truncating='pre')
+
 x_test = pad_sequences(x_test, maxlen=max_s_len, value=0, padding='pre', truncating='pre')
 y_test = pad_sequences(y_test, maxlen=max_s_len, value=0, padding='pre', truncating='pre')
-
-for i, el in enumerate(y_test):
-    if all(i == 0 for i in el):
-        print(el, dev["x"][i])
-
 y_test = to_categorical(y_test, len(labels2ind)+1)
 
-print('ch2ind train:', x_train.shape)
-print('l2ind train:', y_train.shape)
+print('x_train:', x_train.shape)
+print('x_train_chars:', x_train_chars.shape)
+print('y_train:', y_train.shape)
 
-print('ch2ind test:', x_test.shape)
-print('l2ind test:', y_test.shape)
+print('x_test:', x_test.shape)
+print('x_test_chars:', x_test_chars.shape)
+print('y_test:', y_test.shape)
 
 ########################################################################################################################
 
@@ -151,15 +156,23 @@ def word2char_random_matrix():
     return np.array(embed_vocab)
 
 
+def char_random():
+    embed_vocab = list()
+    base_vector = np.zeros(RANDOM_CHAR_VECTOR_SIZE)
+    embed_vocab.append(base_vector)
+    for ch in unique_chars:
+        limit = math.sqrt(3.0 / RANDOM_CHAR_VECTOR_SIZE)
+        features_per_token = np.random.uniform(-limit, limit, RANDOM_CHAR_VECTOR_SIZE)
+        embed_vocab.append(features_per_token)
+    return np.array(embed_vocab)
+
+
 def w2v_matrix():
     w2v_vectors = KeyedVectors.load_word2vec_format(w2v_model, binary=False)
-    all_embs = np.stack(w2v_vectors.vectors)
-
     vectors = []
     cover_voc = 0
     base_vector = np.zeros(RANDOM_CHAR_VECTOR_SIZE)
     vectors.append(base_vector)
-
     for t in unique_words:
         try:
             vectors.append(w2v_vectors[t])
@@ -178,15 +191,18 @@ def w2v_matrix():
 one_zero_matrix = word2char_one_zero_matrix(unique_chars)
 random_char_matrix = word2char_random_matrix()
 w2v_matrix = w2v_matrix()
+chars_matrix = char_random()
 print("one_zero_matrix: ", one_zero_matrix.shape)
 print("random_char_matrix: ", random_char_matrix.shape)
 print("w2v_matrix: ", w2v_matrix.shape)
+print("chars_matrix:", chars_matrix.shape)
 
 with open(os.path.join(project_path + '/data/features/features_nn.pkl'), 'wb') as file:
     pickle.dump({
         'one_zero_matrix': one_zero_matrix,
         'random_char_matrix': random_char_matrix,
         'w2v_matrix': w2v_matrix,
+        "chars_matrix": chars_matrix,
 
         'unique_words': unique_words,
         'unique_chars': unique_chars,
@@ -200,8 +216,11 @@ with open(os.path.join(project_path + '/data/features/features_nn.pkl'), 'wb') a
         'max_w_len': max_w_len,
 
         'x_train': x_train,
+        "x_train_chars": x_train_chars,
         'y_train': y_train,
+
         'x_test': x_test,
+        "x_test_chars": x_test_chars,
         'y_test': y_test,
 
     }, file, protocol=4)

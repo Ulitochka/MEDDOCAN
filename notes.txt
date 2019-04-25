@@ -50,5 +50,42 @@ ID_TITULACION_PERSONAL_SANITARIO    1397
                                O  225723
 
 
+simple_nn_model_2019_04_24-12_39_07-cd606bdf
+                                  precision    recall  f1-score   support
 
+                           CALLE     0.9886    0.9836    0.9861      2994
+                    CENTRO_SALUD     1.0000    1.0000    1.0000        11
+              CORREO_ELECTRONICO     0.9970    0.9963    0.9966      1342
+          EDAD_SUJETO_ASISTENCIA     0.9980    0.9695    0.9835      1017
+    FAMILIARES_SUJETO_ASISTENCIA     0.9176    0.6446    0.7573       121
+                          FECHAS     0.9990    0.9812    0.9900      3133
+                        HOSPITAL     0.9684    0.9451    0.9566       583
+                ID_ASEGURAMIENTO     1.0000    0.9743    0.9870       584
+         ID_CONTACTO_ASISTENCIAL     1.0000    0.9688    0.9841        32
+    ID_EMPLEO_PERSONAL_SANITARIO     0.0000    0.0000    0.0000         5
+            ID_SUJETO_ASISTENCIA     0.9743    0.9589    0.9665       316
+ID_TITULACION_PERSONAL_SANITARIO     0.9910    0.9985    0.9947       664
+                     INSTITUCION     0.8812    0.7265    0.7964       245
+       NOMBRE_PERSONAL_SANITARIO     0.9857    0.9894    0.9876      1608
+        NOMBRE_SUJETO_ASISTENCIA     0.9974    0.9949    0.9962       782
+                      NUMERO_FAX     1.0000    0.8125    0.8966        16
+                 NUMERO_TELEFONO     0.8690    0.9359    0.9012        78
+                               O     0.0000    0.0000    0.0000         0
+         OTROS_SUJETO_ASISTENCIA     0.6667    0.1429    0.2353        14
+                            PAIS     0.9970    0.9573    0.9767       351
+                       PROFESION     0.1667    0.2000    0.1818         5
+          SEXO_SUJETO_ASISTENCIA     0.9910    0.9756    0.9832       450
+                      TERRITORIO     0.9693    0.9547    0.9619      1191
 
+                       micro avg     0.9713    0.9713    0.9713     15542
+                       macro avg     0.8417    0.7874    0.8052     15542
+                    weighted avg     0.9868    0.9713    0.9785     15542
+
+ __________________________________________________________________________________________________
+Train on 13587 samples, validate on 6991 samples
+Epoch 1/50
+13587/13587 [==============================] - 337s 25ms/step - loss: 0.0549 - val_loss: 0.0042
+New best f1macro:  0.612644 — val_precision:  0.717733 — val_recall  0.608461
+Epoch 2/50
+13587/13587 [==============================] - 358s 26ms/step - loss: -3.0276e-04 - val_loss: -0.0023
+New best f1macro:  0.699148 — val_precision:  0.720127 — val_recall  0.690381

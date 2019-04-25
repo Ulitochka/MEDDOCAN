@@ -70,8 +70,6 @@ dev = data_set["valid"]
 
 print('Count long sent in all data:', COUNT_LONG_SENT)
 
-########################################################################################################################
-
 unique_words = sorted(set([w for s in train["x"] + dev["x"] for w in s]))
 unique_chars = sorted(set([ch for s in train["x"] + dev["x"] for w in s for ch in w]))
 print('unique_chars: ', len(unique_chars))
@@ -145,7 +143,7 @@ def word2char_one_zero_matrix(unique_symbols):
     return np.array(embed_vocab).astype('int8')
 
 
-def word2char_random_matrix():
+def w2v_random_matrix():
     embed_vocab = list()
     base_vector = np.zeros(RANDOM_CHAR_VECTOR_SIZE)
     embed_vocab.append(base_vector)
@@ -189,18 +187,18 @@ def w2v_matrix():
 
 
 one_zero_matrix = word2char_one_zero_matrix(unique_chars)
-random_char_matrix = word2char_random_matrix()
+w2v_random_matrix = w2v_random_matrix()
 w2v_matrix = w2v_matrix()
 chars_matrix = char_random()
 print("one_zero_matrix: ", one_zero_matrix.shape)
-print("random_char_matrix: ", random_char_matrix.shape)
+print("random_char_matrix: ", w2v_random_matrix.shape)
 print("w2v_matrix: ", w2v_matrix.shape)
 print("chars_matrix:", chars_matrix.shape)
 
 with open(os.path.join(project_path + '/data/features/features_nn.pkl'), 'wb') as file:
     pickle.dump({
         'one_zero_matrix': one_zero_matrix,
-        'random_char_matrix': random_char_matrix,
+        'w2v_random_matrix': w2v_random_matrix,
         'w2v_matrix': w2v_matrix,
         "chars_matrix": chars_matrix,
 
@@ -220,6 +218,7 @@ with open(os.path.join(project_path + '/data/features/features_nn.pkl'), 'wb') a
         'y_train': y_train,
 
         'x_test': x_test,
+        "x_test_tokens": dev["x"],
         "x_test_chars": x_test_chars,
         'y_test': y_test,
 

@@ -73,6 +73,7 @@ print('Count long sent in all data:', COUNT_LONG_SENT)
 unique_words = sorted(set([w for s in train["x"] + dev["x"] for w in s]))
 unique_chars = sorted(set([ch for s in train["x"] + dev["x"] for w in s for ch in w]))
 print('unique_chars: ', len(unique_chars))
+print(unique_chars)
 
 words2i = {w: i + 1 for i, w in enumerate(unique_words)}
 chars2i = {ch: i + 1 for i, ch in enumerate(unique_chars)}

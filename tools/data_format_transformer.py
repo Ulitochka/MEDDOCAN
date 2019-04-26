@@ -60,8 +60,8 @@ def markup_aligner(markup, text):
     return sent_with_markup
 
 
-init_data_path = '/home/m.domrachev/repos/competitions/MEDDOCAN/data//'
-result_data_path = '/home/m.domrachev/repos/competitions/MEDDOCAN/data/markups//'
+init_data_path = '/home/m.domrachev/repos/competitions/MEDDOCAN/data/'
+result_data_path = '/home/m.domrachev/repos/competitions/MEDDOCAN/data/markups/'
 
 files = []
 for f in os.listdir(init_data_path):

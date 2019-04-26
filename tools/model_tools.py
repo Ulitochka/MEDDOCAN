@@ -19,12 +19,7 @@ class ModelTools:
         fyh = [t for s in fyh_sent for t in s]
         fpr = [t for s in fpr_sent for t in s]
 
-        return {
-            "fyh_sent": fyh_sent,
-            "fpr_sent": fpr_sent,
-            "fyh": fyh,
-            "fpr": fpr
-        }
+        return fyh, fpr
 
     def remove_null(self, true_values, predictions):
         true_values_without_null = []

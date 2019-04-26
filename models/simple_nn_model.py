@@ -25,12 +25,13 @@ from tools.model_tools import ModelTools
 class BaseModel:
     CONFIG = dict()
     LSTM_SIZE = 1024
-    WDROP_RATE = 0.3
-    EPOCHS = 50
+    DROP_RATE = 0.3
+    EPOCHS = 70
     BS = 32
     INPUT_PROJECTION = False
     SELF_ATTENTION = False
     _CRF = True
+    OPTIMIZER = {'adam': 'adam', 'adadelta': keras.optimizers.Adadelta(clipnorm=1.)}
 
     def __init__(self):
         self.project_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../'))
@@ -43,7 +44,6 @@ class BaseModel:
             data = pickle.load(f)
 
             self.one_zero_matrix = data['one_zero_matrix']
-            # self.w2v_random_matrix = data['w2v_random_matrix']
             self.w2v_matrix = data['w2v_matrix']
             self.chars_matrix = data['chars_matrix']
 
@@ -64,13 +64,12 @@ class BaseModel:
             self.x_test = data['x_test']
             self.x_test_chars = data['x_test_chars']
             self.y_test = data['y_test']
-            self.x_test_tokens = data["x_test_tokens"]
 
         self.CONFIG['max_s_len'] = self.max_s_len
         self.CONFIG['max_w_len'] = self.max_w_len
         self.CONFIG['labels2ind'] = self.labels2ind
         self.CONFIG['LSTM_SIZE'] = self.LSTM_SIZE
-        self.CONFIG['WDROP_RATE'] = self.WDROP_RATE
+        self.CONFIG['DROP_RATE'] = self.DROP_RATE
         self.CONFIG['BS'] = self.BS
         self.CONFIG['EPOCHS'] = self.EPOCHS
         self.CONFIG['INPUT_PROJECTION'] = self.INPUT_PROJECTION
@@ -144,6 +143,15 @@ class BaseModel:
             activation: activation at the output
         Returns:
             output: self attended tensor with dimensionality [batch_size, time_steps, n_output_features]
+
+        Example:
+            char_emb_self_att = self.multiplicative_self_attention(
+                char_emb,
+                n_hidden=None,
+                n_output_features=None,
+                activation=sigmoid
+        )
+
         """
         n_input_features = K.int_shape(units)[2]
         if n_hidden is None:
@@ -161,13 +169,196 @@ class BaseModel:
         output = Dense(n_output_features, activation=activation)(attended_units)
         return output
 
+    def pairwise_mul(self, vests):
+        x, y = vests
+        return x * y
+
+    def build_embedder(self,
+                       matrix,
+                       max_seq_len,
+                       vocab_size=None,
+                       weighted=False,
+                       transformed=False,
+                       default_dim=300,
+                       prefix='word',
+                       mask=False,
+                       trainable=False,
+                       tb=False):
+        """
+        Построение Embedding layer.
+        :param matrix:
+        :param max_seq_len:
+        :param vocab_size:
+        :param weighted:
+        :param transformed:
+        :param default_dim:
+        :param prefix:
+        :param mask:
+        :param trainable:
+        :return:
+        """
+
+        inp = Input(shape=(max_seq_len,))
+
+        if not matrix:
+            emb_dim = default_dim
+            voc_siz = vocab_size
+            enc = Embedding(voc_siz, emb_dim, input_length=max_seq_len, mask=mask, trainable=trainable)(inp)
+        else:
+            emb_dim = matrix.shape[1]
+            voc_siz = matrix.shape[0]
+            if tb:
+                enc = TimeDistributed(
+                    Embedding(voc_siz,
+                              emb_dim,
+                              input_length=max_seq_len,
+                              weights=[matrix],
+                              mask=mask,
+                              trainable=trainable))(inp)
+            else:
+                enc = Embedding(voc_siz,
+                                emb_dim,
+                                input_length=max_seq_len,
+                                weights=[matrix],
+                                mask=mask,
+                                trainable=trainable)(inp)
+
+        if transformed:
+            trf = Dense(emb_dim)(enc)
+            act = LeakyReLU()(trf)
+        else:
+            act = enc
+
+        if weighted:
+            wwt = Embedding(voc_siz,
+                            1,
+                            input_length=max_seq_len,
+                            weights=[np.ones(shape=(voc_siz, 1))])(inp)
+            wac = Reshape((-1, 1))(Activation("softmax")(Reshape((-1,))(wwt)))
+            out = Lambda(self.pairwise_mul, name='MulLayer')([act, wac])
+        else:
+            out = act
+
+        return Model(inputs=[inp], outputs=out, name=prefix + '_embedding_model')
+
+    def build_conv1d_dil_block(self, input_shape, prefix="w2v", cnn_options=None):
+        """
+        https://arxiv.org/pdf/1702.02098.pdf
+        https://www.tensorflow.org/api_docs/python/tf/nn/atrous_conv2d
+        https://medium.com/@TalPerry/convolutional-methods-for-text-d5260fd5675f
+        https://pdfs.semanticscholar.org/3bb6/3fdb4670745f8c97d8cad1a8a9603b1c16f5.pdf
+
+        Example:
+            w2v_conv1d_d_encoder = self.build_conv1d_dil_block(
+                w2v_embedder.output_shape,
+                prefix="w2v",
+                cnn_options=((32, 2, 1), (32, 2, 2), (32, 2, 4), (32, 2, 8), (32, 2, 16), (32, 2, 32), (32, 2, 64)),
+            )
+
+        :param input_shape:
+        :param prefix:
+        :param cnn_options:
+        :return:
+        """
+
+        inp = Input(shape=tuple(input_shape[-2:]))
+        for index_dc, el in enumerate(cnn_options):
+            cnns = Conv1D(
+                filters=el[0],
+                kernel_size=el[1],
+                dilation_rate=el[-1],
+                padding="same")(inp)
+            cnns = BatchNormalization()(cnns)
+            cnns = Activation('relu')(cnns)
+            inp = cnns
+        output = inp
+        mod = Model(inputs=inp, outputs=output, name=prefix + '_conv1d_dilated_block')
+        return mod
+
+    def build_conv1d_block(self, input_shape, prefix="w2v", cnn_options=None, tb=False):
+        """
+        Блок свертки.
+        :param input_shape:
+        :param prefix:
+        :param cnn_options:
+        :return:
+        """
+
+        inp = Input(shape=tuple(input_shape[-2:]))
+        output = []
+        if not tb:
+            for el in cnn_options:
+                cnns = Conv1D(
+                    filters=el[0],
+                    kernel_size=el[1],
+                    padding="same",
+                    strides=1)(inp)
+                cnns = BatchNormalization()(cnns)
+                cnns = Activation('tanh')(cnns)
+                output.append(cnns)
+        else:
+            for el in cnn_options:
+                cnns_chars = TimeDistributed(Conv1D(filters=el[0], kernel_size=el[1], padding="same", strides=1))(
+                    inp)
+                cnns_chars = TimeDistributed(BatchNormalization())(cnns_chars)
+                cnns_chars = TimeDistributed(Activation('tanh'))(cnns_chars)
+                cnns_chars = TimeDistributed(GlobalMaxPooling1D())(cnns_chars)
+                output.append(cnns_chars)
+        output = concatenate(output, axis=-1)
+        mod = Model(inputs=inp, outputs=output, name=prefix + '_conv1d_block')
+        return mod
+
+    def build_hw_block(self, input_shape, prefix="w2v"):
+        """
+        HW-block
+        :param input_shape:
+        :param prefix:
+        :return:
+        """
+
+        hway_input = Input(shape=(input_shape[-1],))
+        gate_bias_init = keras.initializers.Constant(-2)
+        transform_gate = Dense(units=input_shape[-1], bias_initializer=gate_bias_init, activation='sigmoid')(hway_input)
+        carry_gate = Lambda(lambda x: 1.0 - x, output_shape=(input_shape[-1],))(transform_gate)
+        h_transformed = Dense(units=input_shape[-1])(hway_input)
+        h_transformed = Activation('relu')(h_transformed)
+        transformed_gated = Multiply()([transform_gate, h_transformed])
+        carried_gated = Multiply()([carry_gate, hway_input])
+        outputs = Add()([transformed_gated, carried_gated])
+        highway_model = Model(inputs=hway_input, outputs=outputs, name=prefix + '_hw_block')
+        return highway_model
+
+    def build_aligned_seq2seq_block(self, input):
+        """
+        Liu & Lane (2016): Attention-Based Recurrent Neural Network Models for Joint Intent Detection and Slot Filling
+        INTERSPEECH 2016, available: https://pdfs.semanticscholar.org/84a9/bc5294dded8d597c9d1c958fe21e4614ff8f.pdf
+        :param input:
+        :return:
+        """
+
+        inp = Input(shape=tuple(K.int_shape(input)[-2:]))
+        lstm_enc, fh, fc, bh, bc = Bidirectional(LSTM(self.LSTM_SIZE, return_sequences=True, return_state=True))(inp)
+        lstm_enc = Dropout(self.DROP_RATE, name='bidirectional_dropout_enc')(lstm_enc)
+        lstm_dec = Bidirectional(LSTM(self.LSTM_SIZE, return_sequences=True))(lstm_enc, initial_state=[bh, bc, fh, fc])
+        output = Dropout(self.DROP_RATE, name='bidirectional_dropout_dec')(lstm_dec)
+        aligned_seq2seq_model = Model(inputs=inp, outputs=output, name='aligned_seq2seq')
+        return aligned_seq2seq_model
+
     def compile_model(self):
 
         model = None
 
-        ########################################### W2V WORD EMB #######################################################
+        ########################################### W2V WORD EMBD#######################################################
 
         txt_input = Input(shape=(self.max_s_len,))
+
+        # w2v_embedder = self.build_embedder(
+        #     matrix=self.w2v_matrix,
+        #     max_seq_len=self.max_s_len,
+        #     vocab_size=len(self.unique_words) + 1,
+        #     prefix='w2v',
+        #     mask=True,
+        #     trainable=False)
 
         txt_embed = Embedding(
             input_dim=len(self.unique_words) + 1,
@@ -178,25 +369,6 @@ class BaseModel:
             trainable=False,
             mask_zero=False
         )(txt_input)
-
-        if self.INPUT_PROJECTION:
-            projections = txt_embed
-            """
-            https://arxiv.org/pdf/1702.02098.pdf
-            https://www.tensorflow.org/api_docs/python/tf/nn/atrous_conv2d
-            https://medium.com/@TalPerry/convolutional-methods-for-text-d5260fd5675f
-            https://pdfs.semanticscholar.org/3bb6/3fdb4670745f8c97d8cad1a8a9603b1c16f5.pdf
-            """
-            for index_dc, el in enumerate(
-                    ((32, 2, 1), (32, 2, 2), (32, 2, 4), (32, 2, 8), (32, 2, 16), (32, 2, 32), (32, 2, 64))):
-                cnns = Conv1D(
-                    filters=el[0],
-                    kernel_size=el[1],
-                    dilation_rate=el[-1],
-                    padding="same")(projections)
-                cnns = BatchNormalization()(cnns)
-                cnns = Activation('relu')(cnns)
-                projections = cnns
 
         ######################################## ONE-HOT CHAR EMBD #####################################################
 
@@ -211,6 +383,14 @@ class BaseModel:
             trainable=False
         )(input_char_emb)
 
+        # o_h_char_embedder = self.build_embedder(
+        #     matrix=self.one_zero_matrix,
+        #     max_seq_len=self.max_s_len,
+        #     vocab_size=len(self.unique_words) + 1,
+        #     prefix='o_h_char',
+        #     mask=False,
+        #     trainable=False)
+
         cnn_outputs = []
         for index_c, el in enumerate(((20, 1), (40, 2), (60, 3), (80, 4), (100, 5))):
             cnns = Conv1D(
@@ -222,6 +402,15 @@ class BaseModel:
             cnns = Activation('tanh')(cnns)
             cnn_outputs.append(cnns)
         cnns = concatenate(cnn_outputs, axis=-1, name='cnn_concat')
+
+        # o_h_cnn1d_encoder = self.build_conv1d_block(
+        #     o_h_char_embedder.output_shape,
+        #     prefix="o_h_char",
+        #     cnn_options=((20, 1), (40, 2), (60, 3), (80, 4), (100, 5)))
+
+        # o_h_hw_block = self.build_hw_block(
+        #     o_h_cnn1d_encoder.output_shape,
+        #     prefix="o_h_char")
 
         hway_input = Input(shape=(K.int_shape(cnns)[-1],))
         gate_bias_init = keras.initializers.Constant(-2)
@@ -235,10 +424,6 @@ class BaseModel:
         highway = Model(inputs=hway_input, outputs=outputs)
         chars_vectors = highway(cnns)
 
-        if self.SELF_ATTENTION:
-            char_emb_self_att = self.multiplicative_self_attention(
-                char_emb, n_hidden=None, n_output_features=None, activation=sigmoid)
-
         ######################################## RANDOM CHAR EMB #######################################################
 
         cnn_input = Input(shape=(self.max_s_len, self.max_w_len))
@@ -250,6 +435,15 @@ class BaseModel:
                       trainable=True,
                       mask_zero=False))(cnn_input)
 
+        random_char_embedder = self.build_embedder(
+            matrix=self.one_zero_matrix,
+            max_seq_len=self.max_s_len,
+            vocab_size=len(self.unique_words) + 1,
+            prefix='random_char',
+            mask=False,
+            trainable=True,
+            tb=True)
+
         cnn_chars_outputs = []
         for el in ((20, 1), (40, 2), (60, 3), (80, 4), (100, 5)):
             cnns_chars = TimeDistributed(Conv1D(filters=el[0], kernel_size=el[1], padding="same", strides=1))(cnn_chars_embed)
@@ -258,6 +452,12 @@ class BaseModel:
             cnns_chars = TimeDistributed(GlobalMaxPooling1D())(cnns_chars)
             cnn_chars_outputs.append(cnns_chars)
         cnn_chars_outputs = concatenate(cnn_chars_outputs, axis=-1)
+
+        # random_cnn1d_encoder = self.build_conv1d_block(
+        #     random_char_embedder.output_shape,
+        #     prefix="random_char",
+        #     cnn_options=((20, 1), (40, 2), (60, 3), (80, 4), (100, 5)),
+        #     tb=True)
 
         hway_input = Input(shape=(K.int_shape(cnn_chars_outputs)[-1],))
         gate_bias_init = keras.initializers.Constant(-2)
@@ -272,28 +472,32 @@ class BaseModel:
         highway = Model(inputs=hway_input, outputs=outputs)
         cnn_chars_outputs = TimeDistributed(highway)(cnn_chars_outputs)
 
-        if self.SELF_ATTENTION:
-            cnn_chars_outputs_self_att = self.multiplicative_self_attention(
-                cnn_chars_outputs, n_hidden=None, n_output_features=None, activation=sigmoid)
+        # random_hw_block = self.build_hw_block(
+        #     random_cnn1d_encoder.output_shape,
+        #     prefix="random_char")
 
         ############################################## RNN PART ########################################################
+
+        # aligned_seq2seq_model = self.build_aligned_seq2seq_block(word_vects)
 
         word_vects = concatenate([chars_vectors, cnn_chars_outputs, txt_embed], axis=-1)
 
         lstm_enc, fh, fc, bh, bc = Bidirectional(LSTM(self.LSTM_SIZE, return_sequences=True, return_state=True))(
             word_vects)     # cnn
+        lstm_enc = Dropout(self.DROP_RATE, name='bidirectional_dropout_enc')(lstm_enc)
         lstm_dec = Bidirectional(LSTM(self.LSTM_SIZE, return_sequences=True))(lstm_enc, initial_state=[bh, bc, fh, fc])
+        lstm_dec = Dropout(self.DROP_RATE, name='bidirectional_dropout_dec')(lstm_dec)
 
         if self._CRF:
             lyr_crf = CRF(len(self.labels2ind) + 1)
             output = lyr_crf(lstm_dec)
             model = Model(inputs=[txt_input, input_char_emb, cnn_input], outputs=output)
-            model.compile(optimizer='adam', loss=lyr_crf.loss_function)
+            model.compile(optimizer=self.OPTIMIZER['adadelta'], loss=lyr_crf.loss_function)
             model.summary()
         else:
             output = Dense(len(self.labels2ind) + 1, activation='softmax')(lstm_dec)
             model = Model(inputs=[txt_input, input_char_emb, cnn_input], outputs=output)
-            model.compile(optimizer='adam', loss="categorical_crossentropy")
+            model.compile(optimizer=self.OPTIMIZER['adam'], loss="categorical_crossentropy")
             model.summary()
 
         return model
@@ -320,7 +524,7 @@ class BaseModel:
             validation_data=([self.x_test, self.x_test, self.x_test_chars], self.y_test),
             verbose=1,
             shuffle=True,
-            callbacks=[self.metrics, cb_nonan, cb_redlr["1"]])
+            callbacks=[self.metrics, cb_nonan])
 
     def feature_extractor(self, sentence):
         t_indexes = [self.words2i.get(w) for w in sentence]
@@ -354,11 +558,7 @@ class BaseModel:
         self.model.load_weights(os.path.join(self.bin_models_files + '%s.h5' % (experiment_id,)))
         test_input = [self.x_test, self.x_test, self.x_test_chars]
         pr = self.model.predict(test_input, verbose=1)
-        result = self.model_tools.preparation_data_to_score(self.y_test, pr, self.ind2labels)
-
-        y_test = result["fyh"]
-        pr = result["fpr"]
-
+        y_test, pr = self.model_tools.preparation_data_to_score(self.y_test, pr, self.ind2labels)
         y_test, pr = self.model_tools.remove_null(y_test, pr)
         labels = [el[0] for el in sorted([(el, self.labels2ind[el]) for el in self.labels2ind], key=lambda x: x[1])]
         clrep = classification_report(y_test, pr, digits=4, target_names=labels)

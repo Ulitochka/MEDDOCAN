@@ -43,8 +43,7 @@ def argparser():
                     help='Suffix to add to output files (default "conll")')
     ap.add_argument('-v', '--verbose', default=False, action='store_true',
                     help='Verbose output')
-    ap.add_argument('text', metavar='TEXT', nargs='+',
-                    help='Text files ("-" for STDIN)')
+
     return ap
 
 
@@ -117,6 +116,7 @@ def attach_labels(labels, lines):
 # single-character token. TODO: non-ASCII alnum.
 TOKENIZATION_REGEX = re.compile(r'([0-9a-zA-Z\x82¥ª®°±´µº½¿ÁÇÉÍÓ×Úßàáäåçèéíñòóöúüαβγμχ≈≤\ufeff•™’“”]+|[^0-9a-zA-Z\x82¥ª®°±´µº½¿ÁÇÉÍÓ×Úßàáäåçèéíñòóöúüαβγμχ≈≤\ufeff•™’“”])')
 NEWLINE_TERM_REGEX = re.compile(r'(.*?\n)')
+JUNKS_FILE = []
 
 
 def text_to_conll(f):
@@ -128,8 +128,16 @@ def text_to_conll(f):
     else:
         sentences = []
         for l in f:
-            l = sentencebreaks_to_newlines(l)
-            sentences.extend([s for s in NEWLINE_TERM_REGEX.split(l) if s])
+
+            l, junk_mark = sentencebreaks_to_newlines(l)
+
+            if not junk_mark:
+
+                sentences.extend([s for s in NEWLINE_TERM_REGEX.split(l) if s])
+
+            else:
+                JUNKS_FILE.append(f)
+                break
 
     lines = []
 
@@ -153,7 +161,9 @@ def text_to_conll(f):
     if options.annsuffix:
         lines = relabel(lines, get_annotations(f.name))
 
-    lines = [[l[0], str(l[1]), str(l[2]), l[3]] if l else l for l in lines]
+    # TODO неправильный порядок?!
+    # lines = [[l[0], str(l[1]), str(l[2]), l[3]] if l else l for l in lines]
+    lines = [[l[3], str(l[1]), str(l[2]), l[0]] if l else l for l in lines]
     return StringIO('\n'.join(('\t'.join(l) for l in lines)))
 
 
@@ -321,7 +331,19 @@ def main(argv=None):
     if options.annsuffix and options.annsuffix[0] != '.':
         options.annsuffix = '.' + options.annsuffix
 
-    process_files(options.text)
+    init_data_path = '/home/m.domrachev/repos/competitions/MEDDOCAN/data/dev/brat/'
+    files = []
+    for f in os.listdir(init_data_path):
+        if f.endswith('.txt'):
+            files.append(os.path.join(init_data_path, f))
+
+    for el in files:
+        print(el)
+        process_files([el])
+
+    print('JUNKS_FILE count:', len(JUNKS_FILE))
+    for el in JUNKS_FILE:
+        print(el)
 
 
 if __name__ == "__main__":

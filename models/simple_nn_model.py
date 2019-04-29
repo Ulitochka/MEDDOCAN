@@ -26,7 +26,7 @@ class BaseModel:
     CONFIG = dict()
     LSTM_SIZE = 1024
     DROP_RATE = 0.3
-    EPOCHS = 70
+    EPOCHS = 50
     BS = 32
     INPUT_PROJECTION = False
     SELF_ATTENTION = False
@@ -37,6 +37,7 @@ class BaseModel:
         self.project_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../'))
         self.bin_models_files = os.path.join(self.project_path + '/bin/')
         self.result_path = os.path.join(self.project_path + '/results/')
+        self.dev_set_path = os.path.join(self.project_path + '/data/test/')
 
         self.experiment_id = time.strftime("%Y_%m_%d-%H_%M_%S-") + str(uuid.uuid4())[:8]
 
@@ -46,6 +47,7 @@ class BaseModel:
             self.one_zero_matrix = data['one_zero_matrix']
             self.w2v_matrix = data['w2v_matrix']
             self.chars_matrix = data['chars_matrix']
+            self.gaz_matrix = data['gaz_matrix']
 
             self.unique_words = data['unique_words']
             self.unique_chars = data['unique_chars']
@@ -348,7 +350,21 @@ class BaseModel:
 
         model = None
 
-        ########################################### W2V WORD EMBD#######################################################
+        ########################################### GAZ EMD ############################################################
+
+        # gaz_input = Input(shape=(self.max_s_len,))
+        #
+        # gaz_embed = Embedding(
+        #     input_dim=len(self.unique_words) + 1,
+        #     output_dim=self.gaz_matrix.shape[1],
+        #     input_length=self.max_s_len,
+        #     weights=[self.gaz_matrix],
+        #     name='gaz_embedding',
+        #     trainable=False,
+        #     mask_zero=False
+        # )(gaz_input)
+
+        ########################################### W2V WORD EMBD ######################################################
 
         txt_input = Input(shape=(self.max_s_len,))
 
@@ -435,14 +451,14 @@ class BaseModel:
                       trainable=True,
                       mask_zero=False))(cnn_input)
 
-        random_char_embedder = self.build_embedder(
-            matrix=self.one_zero_matrix,
-            max_seq_len=self.max_s_len,
-            vocab_size=len(self.unique_words) + 1,
-            prefix='random_char',
-            mask=False,
-            trainable=True,
-            tb=True)
+        # random_char_embedder = self.build_embedder(
+        #     matrix=self.one_zero_matrix,
+        #     max_seq_len=self.max_s_len,
+        #     vocab_size=len(self.unique_words) + 1,
+        #     prefix='random_char',
+        #     mask=False,
+        #     trainable=True,
+        #     tb=True)
 
         cnn_chars_outputs = []
         for el in ((20, 1), (40, 2), (60, 3), (80, 4), (100, 5)):
@@ -492,7 +508,7 @@ class BaseModel:
             lyr_crf = CRF(len(self.labels2ind) + 1)
             output = lyr_crf(lstm_dec)
             model = Model(inputs=[txt_input, input_char_emb, cnn_input], outputs=output)
-            model.compile(optimizer=self.OPTIMIZER['adadelta'], loss=lyr_crf.loss_function)
+            model.compile(optimizer=self.OPTIMIZER['adam'], loss=lyr_crf.loss_function)
             model.summary()
         else:
             output = Dense(len(self.labels2ind) + 1, activation='softmax')(lstm_dec)
@@ -535,24 +551,33 @@ class BaseModel:
         return [t_ind_pad, t_ind_pad, tch_ind_pad]
 
     def predict(self, experiment_id):
-        markups = []
         self.model.load_weights(os.path.join(self.bin_models_files + '%s.h5' % (experiment_id,)))
-        for i_s in tqdm(range(len(self.x_test_tokens))):
-            sentence = self.x_test_tokens[i_s]
-            sentence = [sentence[i * self.max_s_len:(i + 1) * self.max_s_len] for i in
-                        range((len(sentence) + self.max_s_len - 1) // self.max_s_len)]
-            labels = []
-            for s in sentence:
-                features = self.feature_extractor(s)
-                s_pr = self.model.predict(features)
-                pr = [list(np.argmax(el, axis=1)) for el in s_pr]
-                coords = [np.where(yhh > 0)[0][0] for yhh in features[0]]
-                ypr = [prr[co:] for prr, co in zip(pr, coords)]
-                y_l = [self.ind2labels.get(l, 'O') for l in ypr[0]]
-                labels.extend(y_l)
-            mrk = list(zip([t for s in sentence for t in s], labels))
-            markups.append(mrk)
-        self.model_tools.save_to_conll(markups, os.path.join(self.result_path + '%s.txt' % (experiment_id,)))
+
+        for doc in tqdm(os.listdir(self.dev_set_path)[:5]):
+            markups = []
+            seqs = self.model_tools.read_file(os.path.join(self.dev_set_path, doc))
+            seqs_tokens = [[t[0] for t in s] for s in seqs]
+            seqs_range = [[(t[1], t[2]) for t in s] for s in seqs]
+
+            for i_s in range(len(seqs_tokens)):
+                sentence = seqs_tokens[i_s]
+                sentence = [sentence[i * self.max_s_len:(i + 1) * self.max_s_len] for i in
+                            range((len(sentence) + self.max_s_len - 1) // self.max_s_len)]
+                labels = []
+                for s in sentence:
+                    features = self.feature_extractor(s)
+                    s_pr = self.model.predict(features)
+                    pr = [list(np.argmax(el, axis=1)) for el in s_pr]
+                    coords = [np.where(yhh > 0)[0][0] for yhh in features[0]]
+                    ypr = [prr[co:] for prr, co in zip(pr, coords)]
+                    y_l = [self.ind2labels.get(l, 'O') for l in ypr[0]]
+                    labels.extend(y_l)
+                mrk = list(zip([t for s in sentence for t in s], labels, seqs_range[i_s]))
+                markups.append(mrk)
+
+            spans = [sp for ms in markups for sp in self.model_tools.iob2spans(ms)][::-1]
+            self.model_tools.save2ann(spans, os.path.join(self.result_path + '%s.ann' % (doc.split('.')[0],)))
+            # self.model_tools.save2conll(markups, os.path.join(self.result_path + '%s' % (doc,)))
 
     def estimate(self, experiment_id):
         self.model.load_weights(os.path.join(self.bin_models_files + '%s.h5' % (experiment_id,)))
@@ -567,5 +592,6 @@ class BaseModel:
 
 if __name__ == '__main__':
     base_model = BaseModel()
-    base_model.train()
-    # base_model.predict(experiment_id='simple_nn_model_2019_04_24-12_39_07-cd606bdf')
+    # base_model.train()
+    # base_model.estimate('simple_nn_model_2019_04_28-15_55_43-b3a9abaf')
+    base_model.predict(experiment_id='simple_nn_model_2019_04_28-15_55_43-b3a9abaf')

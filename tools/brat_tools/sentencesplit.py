@@ -27,6 +27,9 @@ def _normspace(s):
 
 
 def sentencebreaks_to_newlines(text):
+
+    junk_mark = False
+
     offsets = [o for o in regex_sentence_boundary_gen(text)]
 
     # break into sentences
@@ -58,17 +61,24 @@ def sentencebreaks_to_newlines(text):
         new_parts.append(text[offsets[-1][1]:])
 
     # sanity check
-    assert text == ''.join(orig_parts), "INTERNAL ERROR:\n    '%s'\nvs\n    '%s'" % (
-        text, ''.join(orig_parts))
+
+    if text != ''.join(orig_parts):
+        print("INTERNAL ERROR:\n    '%s'\nvs\n    '%s'" % (text, ''.join(orig_parts)))
+        junk_mark = True
 
     splittext = ''.join(new_parts)
 
     # sanity
-    assert len(text) == len(splittext), "INTERNAL ERROR"
-    assert _normspace(text) == _normspace(splittext), "INTERNAL ERROR:\n    '%s'\nvs\n    '%s'" % (
-        _normspace(text), _normspace(splittext))
 
-    return splittext
+    if len(text) != len(splittext):
+        print("INTERNAL ERROR")
+        junk_mark = True
+
+    if _normspace(text) != _normspace(splittext):
+        print("INTERNAL ERROR:\n    '%s'\nvs\n    '%s'" % (_normspace(text), _normspace(splittext)))
+        junk_mark = True
+
+    return splittext, junk_mark
 
 
 def main(argv):

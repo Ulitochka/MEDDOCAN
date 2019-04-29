@@ -81,11 +81,55 @@ ID_TITULACION_PERSONAL_SANITARIO     0.9910    0.9985    0.9947       664
                        macro avg     0.8417    0.7874    0.8052     15542
                     weighted avg     0.9868    0.9713    0.9785     15542
 
- __________________________________________________________________________________________________
-Train on 13587 samples, validate on 6991 samples
-Epoch 1/50
-13587/13587 [==============================] - 337s 25ms/step - loss: 0.0549 - val_loss: 0.0042
-New best f1macro:  0.612644 — val_precision:  0.717733 — val_recall  0.608461
-Epoch 2/50
-13587/13587 [==============================] - 358s 26ms/step - loss: -3.0276e-04 - val_loss: -0.0023
-New best f1macro:  0.699148 — val_precision:  0.720127 — val_recall  0.690381
+simple_nn_model_2019_04_28-15_55_43-b3a9abaf
+                                   precision    recall  f1-score   support
+
+                           B-CALLE     0.9613    0.9576    0.9595       519
+                    B-CENTRO_SALUD     1.0000    1.0000    1.0000         1
+              B-CORREO_ELECTRONICO     0.9869    0.9784    0.9826       231
+          B-EDAD_SUJETO_ASISTENCIA     0.9959    0.9702    0.9829       503
+    B-FAMILIARES_SUJETO_ASISTENCIA     0.8657    0.6905    0.7682        84
+                          B-FECHAS     0.9822    0.9390    0.9601       705
+                        B-HOSPITAL     0.9612    0.9323    0.9466       133
+                B-ID_ASEGURAMIENTO     1.0000    0.9896    0.9948       192
+         B-ID_CONTACTO_ASISTENCIAL     1.0000    1.0000    1.0000        31
+    B-ID_EMPLEO_PERSONAL_SANITARIO     0.0000    0.0000    0.0000         1
+            B-ID_SUJETO_ASISTENCIA     0.9855    0.9679    0.9766       280
+B-ID_TITULACION_PERSONAL_SANITARIO     0.9910    0.9955    0.9932       220
+                     B-INSTITUCION     0.9250    0.5211    0.6667        71
+       B-NOMBRE_PERSONAL_SANITARIO     0.9814    0.9793    0.9804       484
+        B-NOMBRE_SUJETO_ASISTENCIA     0.9959    0.9938    0.9949       487
+                      B-NUMERO_FAX     1.0000    0.5000    0.6667         6
+                 B-NUMERO_TELEFONO     0.7600    0.8261    0.7917        23
+         B-OTROS_SUJETO_ASISTENCIA     0.2500    0.1667    0.2000         6
+                            B-PAIS     0.9909    0.9646    0.9776       339
+                       B-PROFESION     1.0000    0.2500    0.4000         4
+          B-SEXO_SUJETO_ASISTENCIA     0.9954    0.9818    0.9886       440
+                      B-TERRITORIO     0.9649    0.9601    0.9625       802
+                           I-CALLE     0.9853    0.9721    0.9787      2405
+                    I-CENTRO_SALUD     1.0000    0.5000    0.6667         4
+              I-CORREO_ELECTRONICO     0.9973    0.9919    0.9946      1105
+          I-EDAD_SUJETO_ASISTENCIA     0.9897    0.9776    0.9836       492
+    I-FAMILIARES_SUJETO_ASISTENCIA     0.6552    0.5135    0.5758        37
+                          I-FECHAS     1.0000    0.9392    0.9686      2352
+                        I-HOSPITAL     0.9731    0.9387    0.9556       424
+                I-ID_ASEGURAMIENTO     0.9974    0.9896    0.9935       386
+    I-ID_EMPLEO_PERSONAL_SANITARIO     0.0000    0.0000    0.0000         3
+            I-ID_SUJETO_ASISTENCIA     0.9583    0.7667    0.8519        30
+I-ID_TITULACION_PERSONAL_SANITARIO     0.9907    1.0000    0.9953       426
+                     I-INSTITUCION     0.9576    0.6348    0.7635       178
+       I-NOMBRE_PERSONAL_SANITARIO     0.9778    0.9814    0.9796      1075
+        I-NOMBRE_SUJETO_ASISTENCIA     0.9963    1.0000    0.9981       269
+                      I-NUMERO_FAX     1.0000    0.4000    0.5714        10
+                 I-NUMERO_TELEFONO     0.7917    0.7917    0.7917        48
+         I-OTROS_SUJETO_ASISTENCIA     0.2000    0.1000    0.1333        10
+                            I-PAIS     1.0000    1.0000    1.0000         6
+                       I-PROFESION     0.0000    0.0000    0.0000         5
+          I-SEXO_SUJETO_ASISTENCIA     0.0000    0.0000    0.0000         2
+                      I-TERRITORIO     0.9073    0.9022    0.9048       358
+                                 O     0.0000    0.0000    0.0000         0
+
+                         micro avg     0.9546    0.9546    0.9546     15187
+                         macro avg     0.8175    0.7265    0.7568     15187
+                      weighted avg     0.9810    0.9546    0.9667     15187
+

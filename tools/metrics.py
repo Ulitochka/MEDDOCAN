@@ -10,9 +10,10 @@ from tools.model_tools import ModelTools
 
 
 class Metrics(Callback):
-    def __init__(self, ind2labels):
+    def __init__(self, ind2labels, model_type):
         super().__init__()
         self.ind2labels = ind2labels
+        self.model_type = model_type
         self.model_tools = ModelTools()
         project_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../'))
         self.bin_models_files = os.path.join(project_path + '/bin/')
@@ -40,10 +41,16 @@ class Metrics(Callback):
 
         val_data = self.validation_data
 
-        validation_input = [val_data[0], val_data[1], val_data[2]]
+        if self.model_type == 2:
+            validation_input = [val_data[0], val_data[1], val_data[2], val_data[3]]
+            validation_test = val_data[4]
+        else:
+            validation_input = [val_data[0], val_data[1]]
+            validation_test = val_data[2]
+
         val_predict = self.model.predict(validation_input)
 
-        val_targ, val_predict = self.model_tools.preparation_data_to_score(val_data[3], val_predict, self.ind2labels)
+        val_targ, val_predict = self.model_tools.preparation_data_to_score(validation_test, val_predict, self.ind2labels)
         val_targ, val_predict = self.model_tools.remove_null(val_targ, val_predict)
 
         _val_f1 = f1_score(val_targ, val_predict, average='macro')

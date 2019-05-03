@@ -44,7 +44,7 @@ class ModelTools:
     def save2ann(self, markup, path):
         with open(path, 'w') as outf:
             for index, el in enumerate(markup):
-                outf.write('T%s\t' % (index) + el)
+                outf.write('T%s\t' % (index+1,) + el)
         outf.close()
 
     def iob2spans(self, sequence, strict_iob2=False):
@@ -113,7 +113,7 @@ class ModelTools:
                     _str += el[0]
                 else:
                     _str += ' ' + el[0]
-            str_result = '%s\t%s\t%s\t%s\n' % (_class, _start_id, _end_id, _str)
+            str_result = '%s %s %s %s\n' % (_class, _start_id, _end_id, _str)
             result.append(str_result)
         return result
 

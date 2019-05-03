@@ -114,7 +114,7 @@ def attach_labels(labels, lines):
 # NERsuite tokenization: any alnum sequence is preserved as a single
 # token, while any non-alnum character is separated into a
 # single-character token. TODO: non-ASCII alnum.
-TOKENIZATION_REGEX = re.compile(r'([0-9a-zA-Z\x82¥ª®°±´µº½¿ÁÇÉÍÓ×Úßàáäåçèéíñòóöúüαβγμχ≈≤\ufeff•™’“”]+|[^0-9a-zA-Z\x82¥ª®°±´µº½¿ÁÇÉÍÓ×Úßàáäåçèéíñòóöúüαβγμχ≈≤\ufeff•™’“”])')
+TOKENIZATION_REGEX = re.compile(r'([0-9a-zA-Z\x80\x82\x89\x96\x99\x9c\x9d¡¥©ª«\xad®°±²³´µ·º»¼½¿ÁÇÉÍÓ×Úßàáâãäåçèéêëíñòóôöøúüŀαβγδηικλμυχ\u200b–—’“”†•′™→−∧≈≤≥●\ufeff]+|[^0-9a-zA-Z\x80\x82\x89\x96\x99\x9c\x9d¡¥©ª«\xad®°±²³´µ·º»¼½¿ÁÇÉÍÓ×Úßàáâãäåçèéêëíñòóôöøúüŀαβγδηικλμυχ\u200b–—’“”†•′™→−∧≈≤≥●\ufeff])')
 NEWLINE_TERM_REGEX = re.compile(r'(.*?\n)')
 JUNKS_FILE = []
 
@@ -331,14 +331,13 @@ def main(argv=None):
     if options.annsuffix and options.annsuffix[0] != '.':
         options.annsuffix = '.' + options.annsuffix
 
-    init_data_path = '/home/m.domrachev/repos/competitions/MEDDOCAN/data/dev/brat/'
+    init_data_path = '/home/m.domrachev/repos/competitions/MEDDOCAN/data/init_data/test/'
     files = []
     for f in os.listdir(init_data_path):
         if f.endswith('.txt'):
             files.append(os.path.join(init_data_path, f))
 
     for el in files:
-        print(el)
         process_files([el])
 
     print('JUNKS_FILE count:', len(JUNKS_FILE))

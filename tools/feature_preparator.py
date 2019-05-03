@@ -1,6 +1,7 @@
 import math
 import itertools
 import pickle
+import string
 from collections import Counter, OrderedDict
 
 from keras.preprocessing.sequence import pad_sequences
@@ -9,7 +10,6 @@ from keras.utils import to_categorical
 from gensim.models import KeyedVectors
 from tqdm import tqdm
 from nltk.corpus import stopwords
-
 
 
 CORRUPTED_FILES = [
@@ -38,12 +38,18 @@ CORRUPTED_FILES = [
 project_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../'))
 bin_models_files = os.path.join(project_path + '/bin/')
 w2v_model = '/mnt/storage/Data/cc.es.300.vec'   # cc.es.300.bin
+augmentation_data = '/mnt/storage/Data/background/'
 gaz_path = os.path.join(project_path + '/data/MEDDOCAN-Gazetteer/')
 stop_words = set(stopwords.words('spanish'))
 
 LEN_THRESHOLD = 100
 COUNT_LONG_SENT = 0
 RANDOM_CHAR_VECTOR_SIZE = 300
+
+punct_soft = string.punctuation + '”—¿»«¡“≈®™»®'
+translator_soft = str.maketrans('', '', punct_soft)
+punct_hard = string.punctuation + '”—¿»«¡“®®™»≈1234567890'
+translator_hard = str.maketrans('', '', punct_hard)
 
 
 data_set = {
@@ -79,6 +85,7 @@ def read_file(path2data_file):
     data = [list(y) for x, y in itertools.groupby([line for line in file_object.readlines()], lambda z: z == '\n')]
     data = [[t.replace('\n', '') for t in s] for s in data]
     data = [[t.split('\t') for t in s if len(t.split()) > 1] for s in data if s != ['']]
+    file_object.close()
     return data
 
 
@@ -89,7 +96,28 @@ def read_gaz_file(file):
         return lines
 
 
+def get_correct_tokens(text):
+    # for ch in ['`', '*', '_', '{', '}', '[', ']', '(', ')', '>', '#', '+', '-', '.', ',', ':', '!', '$']:
+    #     if ch in text:
+    #         text = text.replace(ch, '')
+    if text.isdigit():
+        return text.translate(translator_soft)
+    else:
+        return text.translate(translator_hard)
+
+
+def read_aug_files():
+    aug_voc = []
+    for f in os.listdir(augmentation_data):
+        with open(os.path.join(augmentation_data, f), 'r') as file:
+            lines = file.readlines()
+            lines = sorted(set([get_correct_tokens(t) for l in lines for t in l.strip().lower().split()]))
+            aug_voc.extend(lines)
+    return [t for t in sorted(set(aug_voc)) if t]
+
+
 gazetteers = [read_gaz_file(os.path.join(gaz_path + g + '.txt')) for g in gazetteers]
+aug_voc = read_aug_files()
 
 
 for ds in data_set:
@@ -120,8 +148,9 @@ dev = data_set["valid"]
 
 print('Count long sent in all data:', COUNT_LONG_SENT)
 
-unique_words = sorted(set([w for s in train["x"] + dev["x"] for w in s]))
-unique_chars = sorted(set([ch for s in train["x"] + dev["x"] for w in s for ch in w]))
+unique_words = sorted(set([w for s in train["x"] + dev["x"] for w in s] + aug_voc))
+print('unique_words: ', len(unique_words))
+unique_chars = sorted(set([ch for w in unique_words for ch in w]))
 print('unique_chars: ', len(unique_chars))
 print(unique_chars)
 
@@ -219,6 +248,7 @@ def char_random():
 
 def w2v_matrix():
     w2v_vectors = KeyedVectors.load_word2vec_format(w2v_model, binary=False)
+    non_cover_tokens = []
     vectors = []
     cover_voc = 0
     base_vector = np.zeros(RANDOM_CHAR_VECTOR_SIZE)
@@ -231,9 +261,10 @@ def w2v_matrix():
             limit = math.sqrt(3.0 / RANDOM_CHAR_VECTOR_SIZE)
             embedding_matrix = np.random.uniform(-limit, limit, RANDOM_CHAR_VECTOR_SIZE)
             vectors.append(embedding_matrix)
+            non_cover_tokens.append(t)
     vectors = np.array(vectors)
     print('create matrix: %s; cover_voc: %s' % (vectors.shape, cover_voc))
-    return vectors
+    return vectors, sorted(non_cover_tokens)
 
 
 def one_hot_gazetteer_matrix(gazs):
@@ -247,7 +278,7 @@ def one_hot_gazetteer_matrix(gazs):
                 if t.lower() in gazs[ig]:
                     base_vector[ig] = 2
         vectors.append(base_vector)
-    return np.array(vectors)
+    return np.array(vectors).astype('int8')
 
 
 #######################################################################################################################
@@ -257,7 +288,7 @@ print("gaz_matrix:", gaz_matrix.shape)
 
 one_zero_matrix = word2char_one_zero_matrix(unique_chars)
 w2v_random_matrix = w2v_random_matrix()
-w2v_matrix = w2v_matrix()
+w2v_matrix, non_cover_tokens = w2v_matrix()
 chars_matrix = char_random()
 
 print("one_zero_matrix: ", one_zero_matrix.shape)
@@ -294,3 +325,8 @@ with open(os.path.join(project_path + '/data/features/features_nn.pkl'), 'wb') a
         'y_test': y_test,
 
     }, file, protocol=4)
+
+with open(os.path.join(project_path + '/data/features/non_cover_tokens.txt'), 'w') as outf:
+    for el in non_cover_tokens:
+        outf.write(el + '\n')
+outf.close()

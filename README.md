@@ -2,6 +2,7 @@
 MEDDOCAN
 
 Competition web-page: http://temu.bsc.es/meddocan/
+
 Results:
 
 Task 1:
@@ -15,3 +16,5 @@ Precision	Recall	F1
 Task 2 (Merged):
 Precision	Recall	F1
 0.96515	0.96826	0.9667
+
+Model from https://github.com/sberbank-ai/ner-bert
